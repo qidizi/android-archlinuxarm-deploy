@@ -29,5 +29,14 @@
 ---
 ## 缩略图
 
+![获取部署脚本](https://github.com/qidizi/android-archlinuxarm-deploy/raw/master/get-sh.jpeg)  
+
+![执行部署脚本](https://github.com/qidizi/android-archlinuxarm-deploy/raw/master/sh.jpeg)   
+
+![pc通过ssh登录android linux](https://github.com/qidizi/android-archlinuxarm-deploy/raw/master/pc.png)   
+
+![手机上登录android linux](https://github.com/qidizi/android-archlinuxarm-deploy/raw/master/ssh.jpeg)   
+
+
 
 
