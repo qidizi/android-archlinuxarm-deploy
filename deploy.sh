@@ -204,9 +204,9 @@ EOF
     # 升级系统
     # chroot_exec -u root pacman -Syu
     #安装必要工具
-    chroot_exec -u root pacman -S git nginx vim
+    #chroot_exec -u root pacman -S git nginx vim
     # 让git与https库交互时，不验证ssl
-    chroot_exec -u root git config --global http.sslverify "false" 
+    #chroot_exec -u root git config --global http.sslverify "false" 
     linuxStop
     echo "登入linux系统后，使用pacman -Syu升级系统"
     echo '配置完成'
