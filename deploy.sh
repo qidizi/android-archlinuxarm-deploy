@@ -1,38 +1,40 @@
 #!/bin/bash
-# android arch linux arm aarch64 部署脚本
-# 用法
-
-# 1. 从应用市场下载安装termius
-# 2. 创建一个local
-# 3. 运行local
-# 4. 执行命令： sh /sdcard/-/linux.sh
-# 5. 根据提示操作
-
+# 固定部署 aarch64 archLinux arm脚本
 # 若有应用提示没有socket权限，一般原因是需要在/etc/group 此行aid_inet:x:3003:root,mysql加入该用户
 
 
 #######config########
+# 我的工具集目录
 DATA_ROOT="/data/-/";
+# bin为我的扩展可执行目录
 BUSY_BOX="${DATA_ROOT}bin/busybox";
-# 安装包下载地址
+# linux安装包下载地址
 LINUX_URI="http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz";
-# 安装包保存路径
+# 安装包保存路径；用于缓存，重新部署时可以重复使用，无需重新下载；
 LINUX_IMG="${DATA_ROOT}linux.img.tar.gz";
-# 部署的 linux  根目录路径
+# 解压后的 linux  系统根目录路径
 CHROOT_DIR="${DATA_ROOT}linux";
 # 唯一操作用户，建议不用其它用户，因为需要权限等预处理才能正常使用
 USER_NAME="root"
+# ssh 端口
 SSH_PORT="9114"
+# DNS 1
+DNS1="114.114.114.114"
+# sdcard下的目录要挂载到linux中的路径，可选
+MOUNT_SDCARD_PATH="/sdcard/-"
 
+# 输出空行
 function echoBlank {
     echo -e "\n\n\n\n\n\n\n\n\n\n"
 }
 
+# 部署linux
 function linuxDeploy {
-    echo "若确认要重新部署请输入Y："
+    echo "确定重新部署？请输入Y："
     read yes
     
     if [[ "${yes}" != "Y" ]];then
+        echo "部署被取消";
         exit
     fi
     
@@ -41,39 +43,45 @@ function linuxDeploy {
     needDownload=0
 
     if [[ ! -f ${LINUX_IMG} ]]; then
+        # linux安装包有缓存
         needDownload="Y"
     else
-        echo "linux镜像已存在，下载时间$(stat -c %y ${LINUX_IMG}),若要重新下载请输入Y，否则直接回车，请选择："
+        echo "linux安装包已存在，下载时间为$(stat -c %y ${LINUX_IMG}),需重新下载请输入Y（不建议），否则直接回车使用（可部署后升级系统），请选择："
         read needDownload   
     fi
     
     if [[ "${needDownload}" = "Y" ]]; then
-        echo "开始下载镜像..."
+        echo "开始下载linux安装包..."
         curl --location --verbose --url "${LINUX_URI}" --output "${LINUX_IMG}"
-        fail2die "下载失败"
+        fail2die "下载失败，请重试" "下载完成"
     fi
 
+    echoBlank
     echo "解压 ${LINUX_IMG} 至 ${CHROOT_DIR} ...";
     "${BUSY_BOX}" tar -xpf $LINUX_IMG -C $CHROOT_DIR;
     fail2die "解压异常" "解压完成"
-    echo "部署完成"
+    
+    echoBlank
     linuxConfig "n"
+    echo "部署完成"
 }
 
+# 配置linux
 function linuxConfig {
     echoBlank
     
     if [[ "$1" != "n" ]];then
-        echo "若确认要重新配置请输入Y："
+        echo "重新配置？请输入Y："
         read yes
     
         if [[ "${yes}" != "Y" ]];then
+            echo "操作被取消"
             exit
         fi
     fi
     
-    echo '重新配置...'
-    #安卓必须权限
+    echo "开始配置linux..."
+    #安卓必须的权限
     gp=<<EOF
 aid_system:1000
 aid_radio:1001
@@ -124,15 +132,18 @@ aid_net_bw_acct:3007
 aid_net_bt_stack:3008
 EOF
 
-    # set min uid and gid
+    # 因为android的默认必须的用户已经占用低位id，所以，linux新用户要防止与android用户冲突
     # 对行用查找，并对匹配进行替换
     sed -i 's/^[#]*UID_MIN.*/UID_MIN 5000/' "${CHROOT_DIR}/etc/login.defs"
     sed -i 's/^[#]*GID_MIN.*/GID_MIN 5000/' "${CHROOT_DIR}/etc/login.defs"
     # add android groups
     local aid uid
+    
+    # 复制android必须用户或组到linux；如进程的网络读写权限aid_inet；
     for aid in $gp
     do
         if [[ -z "${aid}" ]];then
+            # 已经存在，如重新配置时
             continue;
         fi
         
@@ -155,24 +166,29 @@ EOF
         fi
     done
 
+    # 主机名解析到loopback
     if ! $(grep -q "^127.0.0.1" "${CHROOT_DIR}/etc/hosts"); then
         echo '127.0.0.1 l' >> "${CHROOT_DIR}/etc/hosts"
     fi
     
+    # arch linux 这个文件指向不存在文件（是一个链接），需要先删除再创建
     ${BUSY_BOX} rm -fv ${CHROOT_DIR}/etc/resolv.conf
-    # arch linux 这个文件指向不存在文件，需要先删除再创建
-    echo "nameserver 114.114.114.114" > ${CHROOT_DIR}/etc/resolv.conf
+    # 指定dns
+    echo "nameserver ${DNS1}" > ${CHROOT_DIR}/etc/resolv.conf
     
-    #修改主机名方便手机上更短
-    echo "l" > ${CHROOT_DIR}/etc/hostname
-    sed -i "s/[#]*PermitRootLogin.*//" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    #修改主机名方便手机上更短;毕竟手机宽度比较小，主机名+路径，输入命令过多就容易换行；
+    echo "l" > ${CHROOT_DIR}/etc/hostname  
+    # 允许在root 在ssh上登录
+    sed -i "s/[#]*PermitRootLogin.*//" "${CHROOT_DIR}/etc/ssh/sshd_config" 
+    # 清除默认ssh端口号
     sed -i "s/[#]*Port.*//" "${CHROOT_DIR}/etc/ssh/sshd_config"
     #这个有多行匹配，先全部删除
     sed -i "s/^[#]*ListenAddress.*$//p" "${CHROOT_DIR}/etc/ssh/sshd_config"
     sed -i "s/^[#]*AllowUsers.*$//p" "${CHROOT_DIR}/etc/ssh/sshd_config"
     #删除全部空行
     sed -i "/^\s*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
-    echo -e "ListenAddress 0.0.0.0\nPort ${SSH_PORT}\nPermitRootLogin yes\nAllowUsers root@127.0.0.1 root@10.44.44.40" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    # 修改ssh 端口；仅允许root从内网登录
+    echo -e "ListenAddress 0.0.0.0\nPort ${SSH_PORT}\nPermitRootLogin yes\nAllowUsers root@127.0.0.1 root@10.* root@192.168.*" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
     mountAll
     
     # generate sshd keys
@@ -180,26 +196,30 @@ EOF
         chroot_exec -u root ssh-keygen -A 
     fi
     
-    # 最新版本需要这个文件
+    # 最新archlinux版本需要这个文件
     chroot_exec -u root ln -sf /proc/self/mounts /etc/mtab
     # 更新包管理key
     chroot_exec -u root pacman-key --init
     chroot_exec -u root pacman-key --populate archlinuxarm
     # 升级系统
-    chroot_exec -u root pacman -Syu
+    # chroot_exec -u root pacman -Syu
     #安装必要工具
     chroot_exec -u root pacman -S git nginx vim
     # 让git与https库交互时，不验证ssl
     chroot_exec -u root git config --global http.sslverify "false" 
     linuxStop
+    echo "登入linux系统后，使用pacman -Syu升级系统"
     echo '配置完成'
     return 0
 }
 
+# 检测某分区是否挂载
 is_mounted()
 {
     local mount_point="$1"
     [ -n "$mount_point" ] || return 1
+    
+    # 挂载同时也会出现在android系统中，所以使用它来过滤即可
     if $(grep -q " ${mount_point%/} " /proc/mounts); then
         return 0
     else
@@ -207,6 +227,7 @@ is_mounted()
     fi
 }
 
+# 失败终止脚本；打印成功信息并继续
 fail2die()
 {
     if [ $? -eq 0 ]; then
@@ -222,6 +243,7 @@ fail2die()
     exit 1
 }
 
+# 挂载linux需要分区
 mountAll()
 {
     echo -n "挂载/proc ... "
@@ -355,21 +377,30 @@ mountAll()
            echo "已处理"
        fi
    fi
+      
+   # 若需要挂载sdcard路径
    
-   path="/sdcard/-"
-   target="${CHROOT_DIR}/root/-"
-   echo -n "挂载${path} ... "
-   if ! is_mounted "${path}"; then
-       mkdirOrDie "${path}"
-       mkdirOrDie "${target}"
-       ${BUSY_BOX} mount --bind "${path}" "${target}"
-       fail2die "失败" "成功"
+   if [[  -d "${MOUNT_SDCARD_PATH}" ]];then
+       path="${MOUNT_SDCARD_PATH}"
+       target="${CHROOT_DIR}/root/-"
+       echo -n "挂载${path} ... "
+       if ! is_mounted "${path}"; then
+           mkdirOrDie "${path}"
+           mkdirOrDie "${target}"
+           ${BUSY_BOX} mount --bind "${path}" "${target}"
+           fail2die "失败" "成功"
+       else
+           echo "已挂载"
+       fi
    else
-       echo "已挂载"
+        echo "sdcard路径不存在或为空，无需挂载处理。"
    fi
    
+   echoBlank
+   echo "挂载操作处理完成"
 }
 
+# 启动linux
 linuxStart()
 {
    echoBlank
@@ -386,6 +417,7 @@ linuxStart()
     return 0
 }
 
+# 运行linux中程序
 chroot_exec()
 {
     unset TMP TEMP TMPDIR LD_PRELOAD LD_DEBUG
@@ -394,30 +426,30 @@ chroot_exec()
         local username="$2"
         shift 2
     fi
-    
 
-        if [ -n "${username}" ]; then
-            if [ $# -gt 0 ]; then
-                chroot "${CHROOT_DIR}" /bin/su - ${username} -c "$*"
-            else
-                chroot "${CHROOT_DIR}" /bin/su - ${username}
-            fi
+    if [ -n "${username}" ]; then
+        if [ $# -gt 0 ]; then
+            chroot "${CHROOT_DIR}" /bin/su - ${username} -c "$*"
         else
-            PATH="${path}" chroot "${CHROOT_DIR}" $*
+            chroot "${CHROOT_DIR}" /bin/su - ${username}
         fi
+    else
+        PATH="${path}" chroot "${CHROOT_DIR}" $*
+    fi
 }
 
+# 停止linux
 linuxStop()
 {
     echoBlank
     echo "开始处理... "
     
-    mysqlServer="/root/soft/mysql.server"
-    if [[ -f "${CHROOT_DIR}${mysqlServer}" ]];then
-        echo "尝试停止mysql"
-        chroot_exec -u root bash "${mysqlServer}" stop
-        fail2die "失败" "成功"
-    fi
+    #mysqlServer="/root/soft/mysql.server"
+    #if [[ -f "${CHROOT_DIR}${mysqlServer}" ]];then
+    #    echo "尝试停止mysql"
+    #    chroot_exec -u root bash "${mysqlServer}" stop
+    #    fail2die "失败" "成功"
+    #fi
     
     local is_release=0
     echo "尝试列举被使用文件..."
@@ -456,6 +488,7 @@ linuxStop()
     echo "停止完成"
 }
 
+# 结束所有linux进程
 kill_pids()
 {
     local pids=$(get_pids $*)
@@ -466,6 +499,7 @@ kill_pids()
     return 0
 }
 
+# 获取linux进程
 get_pids()
 {
     local pid pidfile pids
@@ -487,6 +521,7 @@ get_pids()
     fi
 }
 
+# 检测android是否启用selinux
 selinux_inactive()
 {
     if [ -e "/sys/fs/selinux/enforce" ]; then
@@ -496,6 +531,7 @@ selinux_inactive()
     fi
 }
 
+# 检测android是否支持loop
 loop_support()
 {
     losetup -f 2&> /dev/null;
@@ -525,6 +561,7 @@ awk2()
     echo $input
 }
 
+# 查看linux当前状态
 linuxStatus()
 {
     echoBlank
@@ -629,6 +666,7 @@ die()
     fi
 }
 
+# 目录不存在将创建
 mkdirOrDie()
 {
     if [[ -d "$1" ]]; then
@@ -663,6 +701,7 @@ fi
 uid=$(id -u)
 SH_PATH=${0}
 
+# 检测是否root，且切换成su模式运行本脚本
 if [[ "${uid}" -ne "0" ]];then
     sudo="$(which su)"
     
@@ -691,7 +730,7 @@ fi
 
 if [[ ! -x "${BUSY_BOX}" ]];then
     chmod a+rx "${BUSY_BOX}"
-    fail2die "配置失败"
+    fail2die "操作失败，busybox无效，请重试"
 fi
 
 echo "1） 重新部署linux"
