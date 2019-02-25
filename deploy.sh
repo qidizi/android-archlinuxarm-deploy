@@ -25,7 +25,7 @@ MOUNT_SDCARD_PATH="/sdcard/-"
 
 # 输出空行
 function echoBlank {
-    echo -e "\n\n\n\n\n\n\n\n\n\n"
+    echo -e "\n\n"
 }
 
 # 部署linux
