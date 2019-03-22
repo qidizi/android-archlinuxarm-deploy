@@ -143,7 +143,7 @@ EOF
     for aid in $gp
     do
         if [[ -z "${aid}" ]];then
-            # 已经存在，如重新配置时
+            # 若是空行，空字符，跳过
             continue;
         fi
         
