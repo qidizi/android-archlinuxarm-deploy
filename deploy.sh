@@ -246,6 +246,17 @@ fail2die()
 # 挂载linux需要分区
 mountAll()
 {
+
+    echo -n "挂载/ ... "
+   local target="$CHROOT_DIR/"
+   if ! is_mounted "$target"; then
+       mkdirOrDie "$target"
+       ${BUSY_BOX} mount -o bind "$target" "$target"
+       fail2die "失败" "成功"
+   else
+       echo "已挂载"
+   fi
+   
     echo -n "挂载/proc ... "
    local target="$CHROOT_DIR/proc"
    if ! is_mounted "$target"; then
