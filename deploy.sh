@@ -786,4 +786,6 @@ case "$OPTCMD" in
     ;;
 esac
 
+echo "回车键退出"
+read a
 exit 0
