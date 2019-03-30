@@ -178,13 +178,19 @@ EOF
     
     #修改主机名方便手机上更短;毕竟手机宽度比较小，主机名+路径，输入命令过多就容易换行；
     echo "l" > ${CHROOT_DIR}/etc/hostname  
+    # 国内网络比较差，禁用pacman超时停止下载功能
+    # 删除旧的
+    sed -i "s/^.*DisableDownloadTimeout.*$/d" "${CHROOT_DIR}/etc/pacman.conf"
+    # 替换式指定位置加上
+    sed -i "s/\s*\[options\].*/[options]\nDisableDownloadTimeout/" "${CHROOT_DIR}/etc/pacman.conf"
+   
     # 允许在root 在ssh上登录
-    sed -i "s/[#]*PermitRootLogin.*//" "${CHROOT_DIR}/etc/ssh/sshd_config" 
+    sed -i "s/^[#]*PermitRootLogin.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config" 
     # 清除默认ssh端口号
-    sed -i "s/[#]*Port.*//" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    sed -i "s/^[#]*Port.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
     #这个有多行匹配，先全部删除
-    sed -i "s/^[#]*ListenAddress.*$//p" "${CHROOT_DIR}/etc/ssh/sshd_config"
-    sed -i "s/^[#]*AllowUsers.*$//p" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    sed -i "s/^[#]*ListenAddress.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    sed -i "s/^[#]*AllowUsers.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
     #删除全部空行
     sed -i "/^\s*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
     # 修改ssh 端口；仅允许root从内网登录
