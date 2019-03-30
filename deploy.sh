@@ -180,19 +180,25 @@ EOF
     echo "l" > ${CHROOT_DIR}/etc/hostname  
     # 国内网络比较差，禁用pacman超时停止下载功能
     # 删除旧的
-    sed -i "s/^.*DisableDownloadTimeout.*$/d" "${CHROOT_DIR}/etc/pacman.conf"
+    sed -i "/^.*DisableDownloadTimeout.*$/d" "${CHROOT_DIR}/etc/pacman.conf"
     # 替换式指定位置加上
     sed -i "s/\s*\[options\].*/[options]\nDisableDownloadTimeout/" "${CHROOT_DIR}/etc/pacman.conf"
-   
+    # 删除注释行
+     sed -i "/^\s*#.*$/d" "${CHROOT_DIR}/etc/pacman.conf"
+    # 删除空行
+    sed -i "/^\s*$/d" "${CHROOT_DIR}/etc/pacman.conf"
+    
     # 允许在root 在ssh上登录
-    sed -i "s/^[#]*PermitRootLogin.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config" 
+    sed -i "/^[#]*PermitRootLogin.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config" 
     # 清除默认ssh端口号
-    sed -i "s/^[#]*Port.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    sed -i "/^[#]*Port.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
     #这个有多行匹配，先全部删除
-    sed -i "s/^[#]*ListenAddress.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
-    sed -i "s/^[#]*AllowUsers.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    sed -i "/^[#]*ListenAddress.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    sed -i "/^[#]*AllowUsers.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
     #删除全部空行
     sed -i "/^\s*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
+    #删除注释行
+    sed -i "/^\s*#.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
     # 修改ssh 端口；仅允许root从内网登录
     echo -e "ListenAddress 0.0.0.0\nPort ${SSH_PORT}\nPermitRootLogin yes\nAllowUsers root@127.0.0.1 root@10.* root@192.168.*" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
     mountAll
@@ -261,7 +267,7 @@ mountAll()
        ${BUSY_BOX} mount -o bind "$target" "$target"
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
    
     echo -n "挂载/proc ... "
@@ -271,7 +277,7 @@ mountAll()
        ${BUSY_BOX} mount -t proc proc "$target"
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
 
    echo -n "挂载/sys ... "
@@ -281,7 +287,7 @@ mountAll()
        ${BUSY_BOX} mount -t sysfs sys "$target"
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
 
    echo  -n "挂载/dev ... "
@@ -291,7 +297,7 @@ mountAll()
        ${BUSY_BOX} mount -o bind /dev "$target"
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
 
    echo -n "挂载/dev/shm ... "
@@ -300,7 +306,7 @@ mountAll()
        ${BUSY_BOX} mount -o rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs /dev/shm
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
 
    local target="$CHROOT_DIR/dev/shm"
@@ -309,7 +315,7 @@ mountAll()
        ${BUSY_BOX} mount -o bind /dev/shm "$target"
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
 
    echo -n "挂载/dev/pts ... "
@@ -318,7 +324,7 @@ mountAll()
        ${BUSY_BOX} mount -o rw,nosuid,noexec,gid=5,mode=620,ptmxmode=000 -t devpts devpts /dev/pts
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
 
    local target="$CHROOT_DIR/dev/pts"
@@ -327,7 +333,7 @@ mountAll()
        ${BUSY_BOX} mount -o bind /dev/pts "$target"
        fail2die "失败" "成功"
    else
-       echo "已挂载"
+       echo "已存在"
    fi
 
    echo -n "ln /dev/fd..."
@@ -335,7 +341,7 @@ mountAll()
        ln -s /proc/self/fd /dev/
        fail2die "失败" "成功"
    else
-       echo "已处理"
+       echo "已存在"
    fi
 
 
@@ -344,7 +350,7 @@ mountAll()
        ln -s /proc/self/fd/0 /dev/stdin
        fail2die "失败" "成功"
    else
-       echo "已处理"
+       echo "已存在"
    fi
 
    echo -n "ln /dev/stdout..."
@@ -352,7 +358,7 @@ mountAll()
        ln -s /proc/self/fd/1 /dev/stdout
        fail2die "失败" "成功"
    else
-       echo "已处理"
+       echo "已存在"
    fi
 
    echo -n "ln /dev/stderr..."
@@ -360,7 +366,7 @@ mountAll()
        ln -s /proc/self/fd/2 /dev/stderr
        fail2die "失败" "成功"
    else
-       echo "已处理"
+       echo "已存在"
    fi
 
 
@@ -369,7 +375,7 @@ mountAll()
        ln -s /dev/null /dev/tty0
        fail2die "失败" "成功"
    else
-       echo "已处理"
+       echo "已存在"
    fi
 
 
@@ -380,7 +386,7 @@ mountAll()
        mknod /dev/net/tun c 10 200
        fail2die "失败" "成功"
    else
-       echo "已处理"
+       echo "已存在"
    fi
 
 
@@ -392,7 +398,7 @@ mountAll()
            ${BUSY_BOX} mount -t binfmt_misc binfmt_misc "$binfmt_dir"
            fail2die "失败" "成功"
        else
-           echo "已处理"
+           echo "已存在"
        fi
    fi
       
@@ -408,14 +414,13 @@ mountAll()
            ${BUSY_BOX} mount --bind "${path}" "${target}"
            fail2die "失败" "成功"
        else
-           echo "已挂载"
+           echo "已存在"
        fi
    else
         echo "sdcard路径不存在或为空，无需挂载处理。"
    fi
    
    echoBlank
-   echo "挂载操作处理完成"
 }
 
 # 启动linux
@@ -483,22 +488,30 @@ linuxStop()
     fail2die "结束进程失败" "全部linux进程已结束"
 
     echo "卸载分区... "
+    #  $BUSY_BOX umount -R ${CHROOT_DIR%/}
+    
     local is_mnt=0
     local mask
     for mask in '.*' '*'
     do
-        local parts=$(cat /proc/mounts | $BUSY_BOX awk '{print $2}' | grep "^${CHROOT_DIR%/}/$mask$" | sort -r)
+        local parts=$(cat /proc/mounts | $BUSY_BOX awk '{print $2}' | grep "^${CHROOT_DIR%/}/$mask$" | sort -ur)
         local part
         for part in $parts
         do
             local part_name=$(echo $part | sed "s|^${CHROOT_DIR%/}/*|/|g")
             echo -n "准备卸载分区$part_name ... "
-            for i in 1 2 3
+            for i in 1 2 3 4 5 6 7 8 9 10
             do
-                $BUSY_BOX umount $part && break
+                $BUSY_BOX umount $part
+                
+                if [[ "$?" -eq "0" ]];then
+                    echo "成功"
+                    break
+                fi
+
                 sleep 1
             done
-            fail2die "卸载分区失败" "卸载分区成功"
+            
             is_mnt=1
         done
     done
