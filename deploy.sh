@@ -247,6 +247,7 @@ fail2die()
 mountAll()
 {
 
+    # 必须要挂载一次，否则pacman无法检测硬盘空间，就不让安装包
     echo -n "挂载/ ... "
    local target="$CHROOT_DIR/"
    if ! is_mounted "$target"; then
