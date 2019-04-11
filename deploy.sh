@@ -434,6 +434,7 @@ linuxStart()
     chroot_exec -u root /usr/sbin/sshd
     fail2die "失败" "成功"
     echo "请通过root:root@127.0.0.1:${SSH_PORT}连接sshd"
+    echo "如果curl提示缺少ssl证书，可以使用pacman 安装 ca-certificates-utils"
     # 目前不清楚除了修改etc文件外还有那里指定运行时名字
     chroot_exec -u root hostname l
     echo "启动完成"
