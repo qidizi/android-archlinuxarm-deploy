@@ -1,7 +1,10 @@
 #!/system/bin/sh
-# 固定部署 aarch64 archLinux arm脚本
-# 若有应用提示没有socket权限，一般原因是需要在/etc/group 此行aid_inet:x:3003:root,mysql加入该用户
-# 仅兼容 /system/bin/sh 使用其它版本可能出现错误无法执行
+# 手机必须已 root
+# 建议安装 termux 来使用本脚本;可选的还有connectbot,termius;并授予root权限
+# 本脚本只在小米9 android 10测试,且解析器必须是安卓自带的 /system/bin/sh;其它解析器可能会出现无法执行问题
+# 操作:下载并使用安卓自带/system/bin/sh解析本文件,根据提示操作即可
+# 手机上可以使用qq输入法或是百度快捷短语功能收藏如下自动下载并执行语句,如下:
+# curl -v -o ${EXTERNAL_STORAGE}/linux-deploy.sh https://raw.githubusercontent.com/qidizi/android-archlinuxarm-deploy/master/archlinux-for-mi9-q.sh && /system/bin/sh ${EXTERNAL_STORAGE}/linux-deploy.sh
 
 
 #######config########
@@ -25,6 +28,8 @@ SSH_PORT="9114"
 DNS1="114.114.114.114"
 # sdcard下的目录要挂载到linux中的路径，可选
 MOUNT_SDCARD_PATH="/sdcard/-"
+# 唯一允许登录ssh的用户
+SSH_USER=""
 
 # 输出空行
 function echoBlank {
@@ -210,8 +215,15 @@ EOF
     # 修改ssh 端口；仅允许root从内网登录
     echo "ListenAddress 0.0.0.0"  >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
     echo "Port ${SSH_PORT}" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
-    echo "PermitRootLogin yes"  >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
-    echo "AllowUsers root@127.0.0.1 root@10.* root@192.168.*" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    echo "配置不允许root通过ssh登录"
+    echo "PermitRootLogin no"  >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    echo ""
+    echo "
+    echo "禁止wan用户连接ssh"
+    echo ""
+    echo "请输入唯一可登ssh的用户名(屏小建议1个英文):"
+    read SSH_USER
+    echo "AllowUsers ${SSH_USER}@127.0.0.* ${SSH_USER}@10.* ${SSH_USER}@192.168.*" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
     echo "挂载分区"
     mountAll
     
@@ -226,8 +238,8 @@ EOF
     # 更新包管理key
     chroot_exec -u root pacman-key --init
     chroot_exec -u root pacman-key --populate archlinuxarm
-    # 升级系统
-    # chroot_exec -u root pacman -Syu
+    # 创建用户
+    chroot_exec -u root [[ "-$(id ${SSH_USER})-" == "--" ]] && useradd -d /home/${SSH_USER} -m ${SSH_USER} && echo "输入新用户密码:" && passwd ${SSH_USER}
     #安装必要工具
     #chroot_exec -u root pacman -S git nginx vim
     # 让git与https库交互时，不验证ssl
@@ -446,11 +458,17 @@ linuxStart()
     #启动
     chroot_exec -u root /usr/sbin/sshd
     fail2die "失败" "成功"
-    echo "请通过root:root@127.0.0.1:${SSH_PORT}连接sshd"
+    echo ""
+    echo ""
+    echo "使用提示"
+    echo ""
+    echo "* 若有应用提示没有socket权限，一般原因是需要在/etc/group 此行aid_inet:x:3003:root,mysql加入该用户"
+    echo ""
+    echo "* root已禁用,请通过root:root@127.0.0.1:${SSH_PORT}连接sshd"
     echo "如果curl提示缺少ssl证书，可以使用pacman 安装 ca-certificates-utils"
     # 目前不清楚除了修改etc文件外还有那里指定运行时名字
     chroot_exec -u root hostname l
-    echo "启动完成"
+    echo "启动完成,请注意上方提示内容."
     return 0
 }
 
