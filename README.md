@@ -18,7 +18,7 @@
 1.  手机root；  
 1.  安装ssh客户端，推荐 termius；并授权此app具有root权限；  
 1.  在termius中创建协议为local的主机，例如别名叫mi；  
-1.  在输入法加入如下命令作为快速输入，如qq输入法的快捷短语、百度的懒人短语、搜狗的快捷短语：`curl -v -o ${EXTERNAL_STORAGE}/linux-deploy.sh https://raw.githubusercontent.com/qidizi/android-archlinuxarm-deploy/master/deploy.sh && /system/bin/sh ${EXTERNAL_STORAGE}/linux-deploy.sh`；这个命令意思是每次都先下载，再执行它;本脚本是针对android自带的sh编写,像termux 的sh运行时就会提示语法错误；  
+1.  在输入法加入如下命令作为快速输入，如qq输入法的快捷短语、百度的懒人短语、搜狗的快捷短语：`curl -v -o ${EXTERNAL_STORAGE}/linux-deploy.sh https://raw.githubusercontent.com/qidizi/android-archlinuxarm-deploy/master/deploy.sh && /system/bin/sh ${EXTERNAL_STORAGE}/linux-deploy.sh`,最新使用建议见deploy.sh注释；这个命令意思是每次都先下载，再执行它;本脚本是针对android自带的sh编写,像termux 的sh运行时就会提示语法错误；  
 1.  根据命令提示操作；  
 
 ---
