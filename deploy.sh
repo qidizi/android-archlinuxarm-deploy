@@ -1,15 +1,18 @@
-#!/bin/bash
+#!/system/bin/sh
 # 固定部署 aarch64 archLinux arm脚本
 # 若有应用提示没有socket权限，一般原因是需要在/etc/group 此行aid_inet:x:3003:root,mysql加入该用户
+# 仅兼容 /system/bin/sh 使用其它版本可能出现错误无法执行
 
 
 #######config########
 # 我的工具集目录
 DATA_ROOT="/data/-/";
+# busybox 下载地址
+BUSY_BOX_URL="https://busybox.net/downloads/binaries/1.31.0-defconfig-multiarch-musl/busybox-armv8l"
 # bin为我的扩展可执行目录
 BUSY_BOX="${DATA_ROOT}bin/busybox";
 # linux安装包下载地址
-LINUX_URI="http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz";
+LINUX_URI="http://il.us.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz";
 # 安装包保存路径；用于缓存，重新部署时可以重复使用，无需重新下载；
 LINUX_IMG="${DATA_ROOT}linux.img.tar.gz";
 # 解压后的 linux  系统根目录路径
@@ -25,7 +28,8 @@ MOUNT_SDCARD_PATH="/sdcard/-"
 
 # 输出空行
 function echoBlank {
-    echo -e "\n\n"
+    echo ""
+    echo ""
 }
 
 # 部署linux
@@ -58,7 +62,7 @@ function linuxDeploy {
 
     echoBlank
     echo "解压 ${LINUX_IMG} 至 ${CHROOT_DIR} ...";
-    "${BUSY_BOX}" tar -xpf $LINUX_IMG -C $CHROOT_DIR;
+    "${BUSY_BOX}" tar -vvvxpf $LINUX_IMG -C $CHROOT_DIR;
     fail2die "解压异常" "解压完成"
     
     echoBlank
@@ -164,16 +168,20 @@ EOF
         if ! $(grep -q "^${xname}:.*${USER_NAME}" "${CHROOT_DIR}/etc/group"); then
            sed -i "s|^\(${xname}:.*\)|\1,${USER_NAME}|" "${CHROOT_DIR}/etc/group"
         fi
+
+	echo "安卓用户 ${aid}:${xname} 被绑定到linux中"
     done
 
     # 主机名解析到loopback
     if ! $(grep -q "^127.0.0.1" "${CHROOT_DIR}/etc/hosts"); then
+	echo "修改/etc/hosts"
         echo '127.0.0.1 l' >> "${CHROOT_DIR}/etc/hosts"
     fi
     
     # arch linux 这个文件指向不存在文件（是一个链接），需要先删除再创建
     ${BUSY_BOX} rm -fv ${CHROOT_DIR}/etc/resolv.conf
     # 指定dns
+    echo "修改dns"
     echo "nameserver ${DNS1}" > ${CHROOT_DIR}/etc/resolv.conf
     
     #修改主机名方便手机上更短;毕竟手机宽度比较小，主机名+路径，输入命令过多就容易换行；
@@ -200,11 +208,16 @@ EOF
     #删除注释行
     sed -i "/^\s*#.*$/d" "${CHROOT_DIR}/etc/ssh/sshd_config"
     # 修改ssh 端口；仅允许root从内网登录
-    echo -e "ListenAddress 0.0.0.0\nPort ${SSH_PORT}\nPermitRootLogin yes\nAllowUsers root@127.0.0.1 root@10.* root@192.168.*" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    echo "ListenAddress 0.0.0.0"  >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    echo "Port ${SSH_PORT}" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    echo "PermitRootLogin yes"  >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    echo "AllowUsers root@127.0.0.1 root@10.* root@192.168.*" >>  "${CHROOT_DIR}/etc/ssh/sshd_config"
+    echo "挂载分区"
     mountAll
     
     # generate sshd keys
     if [ $(ls "${CHROOT_DIR}/etc/ssh/" | grep -c key) -eq 0 ]; then
+	echo "生成ssh密钥"
         chroot_exec -u root ssh-keygen -A 
     fi
     
@@ -756,7 +769,7 @@ mkdirOrDie "$(dirname ${BUSY_BOX})"
 
 if [[ ! -f "${BUSY_BOX}" ]];then
     echo "busybox不存在，正在下载...";
-    curl  --location --verbose --url https://busybox.net/downloads/binaries/1.28.1-defconfig-multiarch/busybox-armv8l --output "${BUSY_BOX}"
+    curl  --location --verbose --url "${BUSY_BOX_URL}" --output "${BUSY_BOX}"
     fail2die "下载busybox失败" "下载成功"
 fi
 
@@ -765,6 +778,7 @@ if [[ ! -x "${BUSY_BOX}" ]];then
     fail2die "操作失败，busybox无效，请重试"
 fi
 
+echo ""
 echo "1） 重新部署linux"
 echo "2） 启动linux"
 echo "3） 停止linux"
