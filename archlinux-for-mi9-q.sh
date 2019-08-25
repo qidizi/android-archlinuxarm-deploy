@@ -532,7 +532,7 @@ linuxStart() {
     chroot_exec /usr/sbin/sshd -4
     fail2die "失败" "成功"
 
-    if [ -f "${LINUX_DIR}${RUN_AFTER_START}" ]; then
+    if [ -f "${CHROOT_DIR}${RUN_AFTER_START}" ]; then
         rn_echo "尝试执行启动后处理脚本..."
         chroot_exec bash "${RUN_AFTER_START}"
     fi
@@ -560,9 +560,16 @@ chroot_exec() {
 # 停止linux
 linuxStop() {
     ${DEBUG_ON}
+    
+    if ! is_mounted "${CHROOT_DIR}"; then
+        rn_echo "未开启不需要处理"
+        return 0
+    fi
+    
     rn_echo "开始处理... "
-
-    if [ -f "${LINUX_DIR}${RUN_BEFORE_STOP}" ]; then
+    
+    # 不能使用linux dir 因为可能未挂载
+    if [ -f "${CHROOT_DIR}${RUN_BEFORE_STOP}" ]; then
         rn_echo "尝试执行停止前处理脚本..."
         chroot_exec bash "${RUN_BEFORE_STOP}"
     fi
