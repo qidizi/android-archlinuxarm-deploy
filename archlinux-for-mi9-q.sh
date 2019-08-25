@@ -30,7 +30,7 @@
 # 远程git版本地址
 GIT_SRC="https://raw.githubusercontent.com/qidizi/android-archlinuxarm-deploy/master/"
 # 版本,更新这个版本，必须同时修改版本检查文件，否则升级逻辑将异常
-VER=20190824
+VER=20190825
 # 本脚本远程地址
 SRC_URL="${GIT_SRC}archlinux-for-mi9-q.sh"
 # 本脚本最后版本号远程url
