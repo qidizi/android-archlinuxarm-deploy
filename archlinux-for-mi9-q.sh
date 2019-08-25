@@ -890,7 +890,8 @@ update() {
         fi
 
         mv -f "${dl}" "${SH_PATH}"
-        sh "${DEBUG_SH}" "${SH_PATH}"
+        # shellcheck disable=SC2048
+        sh ${DEBUG_SH} "${SH_PATH}"
         exit 0
     else
         rn_echo "无法检查新版本"
