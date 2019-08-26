@@ -30,7 +30,7 @@
 # 远程git版本地址
 GIT_SRC="https://raw.githubusercontent.com/qidizi/android-archlinuxarm-deploy/master/"
 # 版本,更新这个版本，必须同时修改版本检查文件，否则升级逻辑将异常
-VER=20190825
+VER=201908260942
 # 本脚本远程地址
 SRC_URL="${GIT_SRC}archlinux-for-mi9-q.sh"
 # 本脚本最后版本号远程url
@@ -904,14 +904,6 @@ rn_echo() {
     printf "\n\n${1}\n"
 }
 
-pause_tip() {
-    ${DEBUG_OFF}
-    echo "回车键退出，暂停中..."
-    # 防止idea提示
-    read -r tmp || test "${tmp}"
-    ${DEBUG_ON}
-}
-
 ############ 限制 只能指定设备使用本脚本 ###################
 # 因为sh不支持 set -T,所以要在每个funciton的首行放
 
@@ -1007,27 +999,21 @@ ${DEBUG_ON}
 case "$num" in
 1)
     linuxStart
-    pause_tip
     ;;
 2)
     linuxStop
-    pause_tip
     ;;
 3)
     linuxDeploy
-    pause_tip
     ;;
 4)
     linuxConfig
-    pause_tip
     ;;
 5)
     linuxStatus
-    pause_tip
     ;;
 6)
     chroot_shell
-    pause_tip
     ;;
 7)
     ${DEBUG_OFF}
@@ -1039,7 +1025,6 @@ case "$num" in
     ;;
 8)
     update
-    pause_tip
     ;;
 esac
 
