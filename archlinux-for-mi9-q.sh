@@ -30,7 +30,7 @@
 # 远程git版本地址
 GIT_SRC="https://raw.githubusercontent.com/qidizi/android-archlinuxarm-deploy/master/"
 # 版本,更新这个版本，必须同时修改版本检查文件，否则升级逻辑将异常
-VER=201908260942
+VER=201908271924
 # 本脚本远程地址
 SRC_URL="${GIT_SRC}archlinux-for-mi9-q.sh"
 # 本脚本最后版本号远程url
@@ -482,8 +482,21 @@ mountAll() {
         rn_echo "已存在"
     fi
 
-    #    # 共享内存
-    #    target="${LINUX_DIR}/dev/shm"
+    #    共享内存
+    rn_echo  "挂载/dev/shm ... "
+
+    if ! is_mounted "/dev/shm" ; then
+        mkdirOrDie "/dev/shm"
+        mount -vvvo rw,nosuid,nodev,mode=1777 -t tmpfs tmpfs /dev/shm
+    fi
+
+    target="${CHROOT_DIR}/dev/shm"
+    if ! is_mounted "${target}" ; then
+        mount -vvvo bind /dev/shm "${target}"
+        fail2die "失败" "成功"
+    else
+        echo  "skip"
+    fi
 
     # /dev/fd -> /proc/self/fd
     # /dev/stderr -> /proc/self/fd/2
@@ -546,6 +559,7 @@ linuxStart() {
     echo "* 若需要停止前自动执行任务，请编辑${RUN_BEFORE_STOP}"
     echo "* 保持系统最新，使用 pacman -Suy"
     echo "* 如果遇到pacman提示不信任，可以试试 pacman-key --populate archlinuxarm ，详情见 https://archlinuxarm.org/about/package-signing"
+    echo "* 如果在linux内读操作挂载的手机中文件时提示 cat: index.txt: Required key not available，请注释掉/etc/pam.d/system-login 文件的session    optional   pam_keyinit.so       force revoke这行;再重新启动linux即可解决 －－2019.10.31"
     rn_echo "启动完成,请注意上方提示内容."
 }
 
