@@ -519,11 +519,11 @@ mountAll() {
 
     if [ -d "${MOUNT_SDCARD_PATH}" ]; then
         path="${MOUNT_SDCARD_PATH}"
-        target="${CHROOT_DIR}/root/-"
+        target="${CHROOT_DIR}/sd_mnt"
         rn_echo "挂载${path} ... "
         if ! is_mounted "${target}"; then
             mkdirOrDie "${target}"
-            ${BUSY_BOX} mount -vvvo bind "${path}" "${target}" && ${BUSY_BOX} mount -o remount,suid,dev,exec,rw,relatime "${target}"
+            ${BUSY_BOX} mount -vvvo bind "${path}" "${target}" && ${BUSY_BOX} mount -o remount,nosuid,dev,exec,rw,relatime "${target}"
             fail2die "失败" "成功"
         else
             echo "已存在"
@@ -560,6 +560,7 @@ linuxStart() {
     echo "* 保持系统最新，使用 pacman -Suy"
     echo "* 如果遇到pacman提示不信任，可以试试 pacman-key --populate archlinuxarm ，详情见 https://archlinuxarm.org/about/package-signing"
     echo "* 如果在linux内读操作挂载的手机中文件时提示 cat: index.txt: Required key not available，请注释掉/etc/pam.d/system-login 文件的session    optional   pam_keyinit.so       force revoke这行;再重新启动linux即可解决 －－2019.10.31"
+    echo "* 若需要支持中文，请根据 https://wiki.archlinux.org/index.php/Localization/Simplified_Chinese_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87) 向导来处理"
     rn_echo "启动完成,请注意上方提示内容."
 }
 
